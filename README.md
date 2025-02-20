@@ -1,4 +1,7 @@
-# Monolithic Application Template
+# [ARCHIVED] Monolithic Application Template
+
+This application template has been archived, please do not fork this repository, instead please fork the Microservices based repository
+https://github.com/Regtransfers/RTCodingExercise.Microservices
 
 If you have found your way here, you have more than likely been asked by Regtransfers Ltd to complete a Coding Exercise as a part of your interview process. 
 
