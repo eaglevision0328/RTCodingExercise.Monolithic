@@ -47,4 +47,69 @@ public class PlateService : IPlateService
     {
         return salePrice * markupAmount;
     }
+
+    public async Task UpdateReservationStatusAsync(Guid plateId, string isReserved)
+    {
+        var plate = await _repository.GetByGuidIDAsync(plateId);
+        if (plate == null)
+            throw new ArgumentException("Plate not found");
+
+        plate.PlateStatus = isReserved;
+
+        //Logging to make sure info on when a plate is reserved or unreserved is saved
+        _logger.LogInformation(
+            "Plate {Registration} (ID: {PlateId}) reservation status changed to {Status} at {Timestamp}",
+            plate.Registration,
+            plateId,
+            plate.PlateStatus,
+            DateTime.UtcNow);
+
+        await _repository.SaveChangesAsync();
+    }
+
+    public async Task<IQueryable<Plate>> GetFilteredAndSortedPlates(string sortOrder, string letterFilter, string numberFilter)
+    {
+        var plates = (await GetAvailablePlates()).AsQueryable();
+
+        if (!string.IsNullOrEmpty(letterFilter))
+        {
+            plates = plates.Where(p => p.Letters.Contains(letterFilter));
+        }
+
+        if (!string.IsNullOrEmpty(numberFilter))
+        {
+            plates = plates.Where(p => p.Numbers.ToString().Contains(numberFilter));
+        }
+
+        plates = sortOrder switch
+        {
+            "price_desc" => plates.OrderByDescending(p => p.PurchasePrice),
+            "sale_price" => plates.OrderBy(p => p.SalePrice),
+            "sale_price_desc" => plates.OrderByDescending(p => p.SalePrice),
+            _ => plates.OrderBy(p => p.PurchasePrice), // Default sort
+        };
+
+        return plates;
+    }
+
+    public PromoDetails GetPromoDetails(string promoCode)
+    {
+        const decimal MIN_PRICE_PERCENTAGE = 0.90m;
+        
+        decimal discount = promoCode?.ToUpper() switch
+        {
+            "DISCOUNT" => 25.0m,
+            //"PERCENTOFF" => 0.15m,
+            "PERCENTOFF" => Math.Min(0.15m, 1 - MIN_PRICE_PERCENTAGE), // I wasnt sure what this requirement meant so I have added this in to make sure the purchase price never goes below 90%
+            _ => 0
+        };
+
+        bool isPercentDiscount = promoCode?.ToUpper() == "PERCENTOFF";
+
+        return new PromoDetails
+        {
+            Discount = discount,
+            IsPercentDiscount = isPercentDiscount
+        };
+    }
 }
