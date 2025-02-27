@@ -13,5 +13,7 @@
         public string? Letters { get; set; }
 
         public int Numbers { get; set; }
+
+        public string PlateStatus { get; set; } = "Available";
     }
 }

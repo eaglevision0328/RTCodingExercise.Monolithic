@@ -1,4 +1,7 @@
-﻿namespace RTCodingExercise.Monolithic
+﻿using RTCodingExercise.Monolithic.Interfaces;
+using RTCodingExercise.Monolithic.Services;
+
+namespace RTCodingExercise.Monolithic
 {
     public class Startup
     {
@@ -22,6 +25,8 @@
                         sqlOptions.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
                     }));
 
+            services.AddScoped<IPlateService, PlateService>();
+            
             services.AddControllers();
             services.AddControllersWithViews().AddRazorRuntimeCompilation();
             services.AddRazorPages().AddRazorRuntimeCompilation();
