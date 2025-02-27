@@ -1,17 +1,190 @@
-﻿@model List<Plate>
+﻿@model PaginatedList<Plate>
 
 @{
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div>
+    <button onclick="toggleForm()">Add a Plate</button>
+
+    <div id="plateForm" style="display: none;">
+        <form asp-controller="Home" asp-action="AddPlate" method="post">
+            <div>
+                <label for="registration">Registration:</label>
+                <input type="text" id="registration" name="Registration" required>
+            </div>
+            <div>
+                <label for="purchasePrice">Purchase Price:</label>
+                <input type="number" id="purchasePrice" name="PurchasePrice" required>
+            </div>
+            <div>
+                <label for="salePrice">Sale Price:</label>
+                <input type="number" id="salePrice" name="SalePrice" required>
+            </div>
+            <div>
+                <label for="letters">Letters:</label>
+                <input type="text" id="letters" name="Letters" required>
+            </div>
+            <div>
+                <label for="numbers">Numbers:</label>
+                <input type="text" id="numbers" name="Numbers" required>
+            </div>
+            <div>
+                <label for="plateStatus">Plate Status:</label>
+                <select id="plateStatus" name="PlateStatus" required>
+                    <option value="Available">Available</option>
+                    <option value="Reserved">Reserved</option>
+                    <option value="Sold">Sold</option>
+                </select>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
 </div>
 
-<ul>
-    @foreach(var p in Model)
-    {
-        <li>@p.Registration</li>
+<div class="filters">
+    <form asp-action="Index" method="get">
+        <input type="text" name="letterFilter" placeholder="Filter by letters" value="@ViewData["LetterFilter"]">
+        <input type="text" name="numberFilter" placeholder="Filter by numbers" value="@ViewData["NumberFilter"]">
+        <button type="submit">Filter</button>
+        <tr>
+            <input type="text" name="promoCode" placeholder="Enter promo code" value="@ViewData["PromoCode"]">
+            <button type="submit">Apply Promo</button>
+    </form>
+</div>
+
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Registration</th>
+            <th>
+                <a asp-action="Index"
+                   asp-route-sortOrder="@ViewData["PriceSortParam"]"
+                   asp-route-letterFilter="@ViewData["LetterFilter"]"
+                   asp-route-numberFilter="@ViewData["NumberFilter"]"
+                   asp-route-promoCode="@ViewData["PromoCode"]">
+                    Purchase Price @Html.Raw(ViewData["PriceSort"])
+                </a>
+            </th>
+            <th>
+                <a asp-action="Index"
+                   asp-route-sortOrder="@ViewData["SalePriceSortParam"]"
+                   asp-route-letterFilter="@ViewData["LetterFilter"]"
+                   asp-route-numberFilter="@ViewData["NumberFilter"]"
+                   asp-route-promoCode="@ViewData["PromoCode"]">
+                    Sale Price @Html.Raw(ViewData["SalePriceSort"])
+                </a>
+            </th>
+            <th>Letters</th>
+            <th>Numbers</th>
+            <th>Plate Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            <tr>
+                <td>@p.Registration</td>
+                <td>£@p.PurchasePrice</td>
+                <td>
+                    @{
+                        var originalPrice = p.SalePrice;
+                        var isPercentDiscount = (bool)ViewData["IsPercentDiscount"];
+                        var discount = (decimal)ViewData["Discount"];
+
+                        decimal discountedPrice = isPercentDiscount
+                        ? originalPrice * (1 - discount)  // Percentage discount
+                        : originalPrice - discount;       // Fixed amount discount
+                    }
+
+                    @if (discount > 0)
+                    {
+                        <span class="original-price" style="text-decoration: line-through">£@originalPrice</span>
+                        <span class="discounted-price">£@discountedPrice</span>
+                    }
+                    else
+                    {
+                        <span>£@p.SalePrice</span>
+                    }
+                </td>
+                <td>@p.Letters</td>
+                <td>@p.Numbers</td>
+                <td>@p.PlateStatus</td>
+                <td>
+                    <div class="status-control">
+                        <input type="checkbox"
+                               class="reserve-checkbox"
+                               data-plate-id="@p.Id"
+                        @(p.PlateStatus == "Reserved" ? "checked" : "")
+                               onchange="updateReservationStatus(this)">
+                        <label>Reserved</label>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="pagination">
+    @{
+        var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+        var nextDisabled = !Model.HasNextPage ? "disabled" : "";
     }
-</ul>
+
+    <a asp-action="Index"
+       asp-route-pageNumber="@(Model.PageIndex - 1)"
+       asp-route-sortOrder="@ViewData["CurrentSort"]"
+       asp-route-letterFilter="@ViewData["LetterFilter"]"
+       asp-route-numberFilter="@ViewData["NumberFilter"]"
+       class="btn btn-default @prevDisabled">
+        Previous
+    </a>
+
+    Page @Model.PageIndex of @Model.TotalPages
+
+
+    <a asp-action="Index"
+       asp-route-pageNumber="@(Model.PageIndex + 1)"
+       asp-route-sortOrder="@ViewData["CurrentSort"]"
+       asp-route-letterFilter="@ViewData["LetterFilter"]"
+       asp-route-numberFilter="@ViewData["NumberFilter"]"
+       class="btn btn-default @nextDisabled">
+        Next
+    </a>
+</div>
+
+<script>
+    function toggleForm() {
+        var form = document.getElementById("plateForm");
+        form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+
+    async function updateReservationStatus(checkbox) {
+        const plateId = checkbox.dataset.plateId;
+        const isReserved = checkbox.checked;
+
+        try {
+            const response = await fetch('/Home/UpdateReservationStatus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    plateId: plateId,
+                    status: isReserved ? 'Reserved' : 'Available'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update status');
+            }
+
+            location.reload();
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to update status');
+            checkbox.checked = !checkbox.checked;
+        }
+    }
+</script>

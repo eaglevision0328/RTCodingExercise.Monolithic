@@ -1,4 +1,5 @@
 ﻿using RTCodingExercise.Monolithic.Interfaces;
+using RTCodingExercise.Monolithic.Repository;
 using RTCodingExercise.Monolithic.Services;
 
 namespace RTCodingExercise.Monolithic
@@ -26,7 +27,9 @@ namespace RTCodingExercise.Monolithic
                     }));
 
             services.AddScoped<IPlateService, PlateService>();
-            
+            services.AddScoped<IPlateRepository, PlateRepository>();
+
+
             services.AddControllers();
             services.AddControllersWithViews().AddRazorRuntimeCompilation();
             services.AddRazorPages().AddRazorRuntimeCompilation();
